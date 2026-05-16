@@ -1,41 +1,128 @@
-const express = require('express');
-const { body, query } = require('express-validator');
-const taskController = require('../controllers/task.controller');
-const { protect } = require('../middleware/auth.middleware');
+const Task = require('../models/Task.model');
+const Project = require('../models/Project.model');
 
-const router = express.Router();
+exports.createTask = async (req, res) => {
+  try {
+    const { title, description, projectId, assignedTo, dueDate, priority, tags } = req.body;
 
-router.use(protect);
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
 
-const taskValidation = [
-  body('title').trim().notEmpty().withMessage('Task title is required'),
-  body('projectId').notEmpty().withMessage('Project ID is required').isMongoId(),
-  body('dueDate').notEmpty().withMessage('Due date is required').isISO8601(),
-];
+    const isMember = project.members.some(
+      m => m.user.toString() === req.user._id.toString()
+    );
 
-const updateTaskValidation = [
-  body('status').optional().isIn(['todo', 'in_progress', 'review', 'completed']),
-  body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
-];
+    if (!isMember) {
+      return res.status(403).json({ message: 'You are not a member of this project' });
+    }
 
-const commentValidation = [
-  body('text').trim().notEmpty().withMessage('Comment text is required'),
-];
+    const task = await Task.create({
+      title,
+      description,
+      project: projectId,
+      assignedTo: assignedTo || req.user._id,
+      createdBy: req.user._id,
+      dueDate,
+      priority: priority || 'medium',
+      tags: tags || []
+    });
 
-const taskQueryValidation = [
-  query('projectId').optional().isMongoId(),
-  query('status').optional().isIn(['todo', 'in_progress', 'review', 'completed']),
-  query('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
-];
+    await task.populate('assignedTo', 'name email');
+    await task.populate('createdBy', 'name email');
+    await task.populate('project', 'name');
 
-// These exist ✅
-router.post('/', taskValidation, taskController.createTask);
-router.get('/', taskQueryValidation, taskController.getTasks);
-router.put('/:id', updateTaskValidation, taskController.updateTask);
-router.post('/:id/comments', commentValidation, taskController.addComment);
+    res.status(201).json({ task });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-// Commented out - functions missing
-// router.get('/:id', taskController.getTask);
-// router.delete('/:id', taskController.deleteTask);
+exports.getTasks = async (req, res) => {
+  try {
+    const { projectId, status, priority, assignedTo } = req.query;
+    
+    const query = {};
+    
+    if (projectId) {
+      query.project = projectId;
+    } else {
+      const projects = await Project.find({
+        'members.user': req.user._id
+      });
+      query.project = { $in: projects.map(p => p._id) };
+    }
 
-module.exports = router;
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+    if (assignedTo) query.assignedTo = assignedTo;
+
+    const tasks = await Task.find(query)
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('project', 'name')
+      .sort('-createdAt');
+
+    res.json({ tasks });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const { title, description, status, priority, assignedTo, dueDate, tags } = req.body;
+    const updateData = {};
+
+    if (status) updateData.status = status;
+    if (title) updateData.title = title;
+    if (description) updateData.description = description;
+    if (priority) updateData.priority = priority;
+    if (assignedTo) updateData.assignedTo = assignedTo;
+    if (dueDate) updateData.dueDate = dueDate;
+    if (tags) updateData.tags = tags;
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate('assignedTo', 'name email')
+    .populate('createdBy', 'name email')
+    .populate('project', 'name');
+
+    res.json({ task: updatedTask });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    task.comments.push({
+      user: req.user._id,
+      text
+    });
+
+    await task.save();
+    await task.populate('comments.user', 'name email');
+
+    res.json({ task });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
