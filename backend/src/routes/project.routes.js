@@ -8,35 +8,19 @@ const router = express.Router();
 router.use(protect);
 
 const projectValidation = [
-  body('name')
-    .trim()
-    .notEmpty()
-    .withMessage('Project name is required')
-    .isLength({ max: 100 })
-    .withMessage('Project name cannot exceed 100 characters'),
-  body('description')
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('Description cannot exceed 500 characters')
+  body('name').trim().notEmpty().withMessage('Project name is required'),
+  body('description').optional().trim(),
 ];
 
 const memberValidation = [
-  body('userId')
-    .notEmpty()
-    .withMessage('User ID is required')
-    .isMongoId()
-    .withMessage('Invalid user ID'),
-  body('role')
-    .optional()
-    .isIn(['admin', 'member'])
-    .withMessage('Role must be admin or member')
+  body('userId').notEmpty().withMessage('User ID is required').isMongoId(),
+  body('role').optional().isIn(['admin', 'member']),
 ];
 
 router.post('/', projectValidation, projectController.createProject);
 router.get('/', projectController.getProjects);
 router.get('/:id', projectController.getProject);
-router.put('/:id', projectValidation, projectController.updateProject);
+router.put('/:id', projectController.updateProject);
 router.post('/:id/members', memberValidation, projectController.addMember);
 
 module.exports = router;
