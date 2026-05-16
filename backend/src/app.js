@@ -11,10 +11,16 @@ const app = express();
 
 // Middleware
 app.use(helmet());
+
+// CORS - Allow frontend URL
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://teamtaskmanager123.netlify.app'
+  ],
   credentials: true
 }));
+
 app.use(morgan('dev'));
 app.use(express.json());
 
