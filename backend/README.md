@@ -36,9 +36,14 @@ A full-stack web application for managing projects, tasks, and team collaboratio
 - MongoDB (local or Atlas)
 - npm or yarn
 
+## 🌐 Live Demo
+
+- **Frontend:** [teamtaskmanager123.netlify.app](https://teamtaskmanager123.netlify.app)
+- **Backend API:** [team-task-manager-1-4l2f.onrender.com](https://team-task-manager-1-4l2f.onrender.com)
+
 ### Local Development
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/team-task-manager.git
+git clone https://github.com/Engi-Jasleen-Neer/Team-Task-Manager.git
 cd team-task-manager
