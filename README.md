@@ -40,5 +40,5 @@ A full-stack web application for managing projects, tasks, and team collaboratio
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/team-task-manager.git
+git clone https://github.com/Engi-Jasleen-Neer/Team-Task-Manage.git
 cd team-task-manager
