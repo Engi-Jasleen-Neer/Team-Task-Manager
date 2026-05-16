@@ -1,14 +1,12 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body } = require('express-validator');
 const projectController = require('../controllers/project.controller');
 const { protect } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(protect);
 
-// Validation rules
 const projectValidation = [
   body('name')
     .trim()
@@ -35,12 +33,10 @@ const memberValidation = [
     .withMessage('Role must be admin or member')
 ];
 
-// Routes
 router.post('/', projectValidation, projectController.createProject);
 router.get('/', projectController.getProjects);
 router.get('/:id', projectController.getProject);
 router.put('/:id', projectValidation, projectController.updateProject);
 router.post('/:id/members', memberValidation, projectController.addMember);
-router.delete('/:id/members/:userId', projectController.removeMember);
 
 module.exports = router;
