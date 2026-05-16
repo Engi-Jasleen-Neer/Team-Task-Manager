@@ -96,6 +96,8 @@ exports.updateProject = async (req, res) => {
   }
 };
 
+
+
 exports.addMember = async (req, res) => {
   try {
     const { userId, role } = req.body;
@@ -130,6 +132,42 @@ exports.addMember = async (req, res) => {
     }
 
     project.members.push({ user: userId, role: role || 'member' });
+    await project.save();
+    await project.populate('members.user', 'name email');
+
+    res.json({ project });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Add this function to project.controller.js
+exports.removeMember = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check if user is admin
+    const isAdmin = project.members.some(
+      m => m.user.toString() === req.user._id.toString() && m.role === 'admin'
+    );
+
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Only admins can remove members' });
+    }
+
+    // Cannot remove the owner
+    if (req.params.userId === project.owner.toString()) {
+      return res.status(400).json({ message: 'Cannot remove project owner' });
+    }
+
+    project.members = project.members.filter(
+      m => m.user.toString() !== req.params.userId
+    );
+
     await project.save();
     await project.populate('members.user', 'name email');
 
