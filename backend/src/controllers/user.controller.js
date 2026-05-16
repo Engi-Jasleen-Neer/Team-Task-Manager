@@ -1,51 +1,32 @@
-const User = require('../models/User.model');
+const express = require('express');
+const { body } = require('express-validator');
+const userController = require('../controllers/user.controller');
+const { protect, authorize } = require('../middleware/auth.middleware');
 
-exports.getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select('-password');
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+const router = express.Router();
 
-exports.updateProfile = async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    const updateData = {};
-    
-    if (name) updateData.name = name;
-    if (email) updateData.email = email;
+// All routes require authentication
+router.use(protect);
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
+// Validation
+const updateProfileValidation = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be between 2 and 50 characters'),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage('Please enter a valid email')
+    .normalizeEmail()
+];
 
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+// Routes - All functions exist ✅
+router.get('/profile', userController.getProfile);
+router.put('/profile', updateProfileValidation, userController.updateProfile);
+router.get('/', authorize('admin'), userController.getAllUsers);
+router.get('/:id', userController.getUserById);
 
-exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.json({ users });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.getUserById = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+module.exports = router;
